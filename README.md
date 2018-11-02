@@ -13,3 +13,7 @@ Example for Windows:
 ```
 python.exe read.py "d:/forms/2018/vgosDB/18MAR02XU" "18MAR02XU.ngs"
 ```
+
+# Dependences
+
+Uses `numpy` and `scipy.io.netcdf` for reading netcdf files.
