@@ -51,6 +51,7 @@ def read_nc_delay_rate(file):
     rootgrp = netcdf.NetCDFFile(file, "r")
     group_delay = rootgrp.variables['GroupRate'].data # in radians
     group_delay_sig = rootgrp.variables['GroupRateSig'].data # in radians
+    #DataFlag=rootgrp.variables['DataFlag'].data # in radians
     rootgrp.close()
     return group_delay,group_delay_sig
     
@@ -98,16 +99,16 @@ def read_nc_St(stations,path):
         RelHum[k] = rootgrp.variables['RelHum'].data
     return CableCal, TempC, AtmPres, RelHum
     
-def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, YMDHM, second,RefFreq,\
+def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
            obs2scan, obs2stat1_stat2,scan2sour,coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum):
     out=open(file,'w')
-    out.write('DATA IN NGS FORMAT FROM DATABASE '+file[-13:-4]+'_V'+version[0][2:5]+'\n')
+    out.write('DATA IN NGS FORMAT FROM DATABASE '+file[-16:-7]+'_V'+version[0][2:5]+'\n')
     out.write('Observed delays and rates in card #2, modified errors in card #9\n')
     #Site cards
     dic_axis_type={1:'EQ  ', 2:'XY  ', 3:'AZEL'}
     for i in range(len(stations)):
-        out.write('{:8s}   {:15.5f}{:15.5f}{:15.5f} {:4s}{:10.5f}\n'.format(stations[i],
+        out.write('{:8s}  {:15.5f}{:15.5f}{:15.5f} {:4s}{:10.5f}\n'.format(stations[i],
                   coord_stations[i][0],coord_stations[i][1],coord_stations[i][2],
                   dic_axis_type[axis_type[i]],axis_offset[i]))
     out.write('$END\n')
@@ -126,36 +127,42 @@ def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,del
     out.write('$END\n')
     # Data cards
     for i in range(len(delay)):
-        n_stat1=obs2stat1_stat2[i][0]
-        n_stat2=obs2stat1_stat2[i][1]
+        if len(stations)>2:
+            n_stat1=obs2stat1_stat2[i][0]
+            n_stat2=obs2stat1_stat2[i][1]
+        else:
+            n_stat1=obs2stat1_stat2[0]
+            n_stat2=obs2stat1_stat2[1]
         n_sour=scan2sour[obs2scan[i]-1]-1
         #card 1
         out.write('{:10s}{:10s}{:8s}{:5d} {:02d} {:02d} {:02d} {:02d}{:15.10f}          {:8d}01\n'.format(stations[n_stat1-1],
                   stations[n_stat2-1],sources[n_sour],
                   YMDHM[i][0],YMDHM[i][1],YMDHM[i][2],YMDHM[i][3],YMDHM[i][4],float(second[i]),i+1))
         #card 2
-        out.write('{:20.7f}{:10.5f}{:20.10f}{:10.5f}          {:8d}02\n'.format(delay[i]*10**9,delay_sigma[i]*10**9,
+        out.write('{:20.7f}{:10.5f}{:20.10f}{:10.5f} 0      I {:8d}02\n'.format(delay[i]*10**9,delay_sigma[i]*10**9,
                   delay_rate[i]*10**9,delay_rate_sigma[i]*10**9,i+1))
         #card 3
-        out.write('{:s}{:8d}03\n'.format(70*' ',i+1))
+        out.write('    .00205    .00000    .00000    .00000    .000000000000000        0.'+'{:8d}'.format(i+1)+'03\n')
+        #out.write('{:s}{:8d}03\n'.format(70*' ',i+1))
         #card 4
-        out.write('{:s}{:8d}04\n'.format(70*' ',i+1))
+        out.write('       .00   .0       .00   .0       .00   .0       .00   .0          '+'{:8d}'.format(i+1)+'04\n')
+        #out.write('{:s}{:8d}04\n'.format(70*' ',i+1))
         #card 5
-        out.write('{:10.5f}{:10.5f}{:s}{:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][obs2scan[i]-1],\
-                  10**9*CableCal[stations[n_stat2-1]][obs2scan[i]-1],50*' ',i+1))
+        out.write('{:10.5f}{:10.5f}    .00000    .00000    .00000    .00000          {:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][obs2scan[i]-1],\
+                  10**9*CableCal[stations[n_stat2-1]][obs2scan[i]-1],i+1))
         #card 6
-        out.write('{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f} 0        {:8d}06\n'.format(TempC[stations[n_stat1-1]][obs2scan[i]-1],\
+        out.write('{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f} 0 0      {:8d}06\n'.format(TempC[stations[n_stat1-1]][obs2scan[i]-1],\
                   TempC[stations[n_stat2-1]][obs2scan[i]-1],\
                   AtmPres[stations[n_stat1-1]][obs2scan[i]-1],AtmPres[stations[n_stat2-1]][obs2scan[i]-1],\
                   RelHum[stations[n_stat1-1]][obs2scan[i]-1]*100,RelHum[stations[n_stat2-1]][obs2scan[i]-1]*100,i+1))
         #card 8
-        out.write('{:s}{:8d}08\n'.format(70*' ',i+1))
+        out.write('{:20.10f}{:10f}{:20.10f}{:10f}  0       {:8d}08\n'.format(-tau_ion[i]*10**9,0,-tau_r_ion[i]*10**9,0,i+1))
         #card 9
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
     
-path='in/18APR01XK'
-out='out/18APR01XK.ngs'
+path='in/18APR24XU'
+out='out/180424XT.ngs'
     
 version,stations,sources = read_nc_head(path+"/Head.nc")
 
@@ -164,11 +171,32 @@ coord_stations=read_nc_stat(path+'/Apriori/Station.nc')
 coord_sources=read_nc_sour(path+'/Apriori/Source.nc')
 axis_type, axis_offset=read_nc_A_ant(path+"/Apriori/Antenna.nc")
 
+# Observables X
+delay_x,delay_sigma_x=read_nc_delay(path+'/Observables/GroupDelay_bX.nc')
+delay_rate_x,delay_rate_sigma_x=read_nc_delay_rate(path+'/Observables/GroupRate_bX.nc')
+RefFreq_x = read_nc_O_RF(path+'/Observables/RefFreq_bX.nc')
+
+# Observables S
+delay_s,delay_sigma_s=read_nc_delay(path+'/Observables/GroupDelay_bS.nc')
+delay_rate_s,delay_rate_sigma_s=read_nc_delay_rate(path+'/Observables/GroupRate_bS.nc')
+RefFreq_s = read_nc_O_RF(path+'/Observables/RefFreq_bS.nc')
+
 # Observables
-delay,delay_sigma=read_nc_delay(path+'/Observables/GroupDelay_bX.nc')
-delay_rate,delay_rate_sigma=read_nc_delay_rate(path+'/Observables/GroupRate_bX.nc')
 YMDHM, second = read_nc_O_time(path+"/Observables/TimeUTC.nc")
-RefFreq = read_nc_O_RF(path+'/Observables/RefFreq_bX.nc')
+tau_ion=[]; tau_r_ion=[]
+for i in range(len(delay_x)):
+    tau_ion.append((delay_x[i]-delay_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
+    tau_r_ion.append((delay_rate_x[i]-delay_rate_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
+
+# S or X
+if path[-2]=='X':
+    delay=delay_x; delay_sigma=delay_sigma_x
+    delay_rate=delay_rate_x; delay_rate_sigma=delay_rate_sigma_x
+    RefFreq=RefFreq_x
+if path[-2]=='S':
+    delay=delay_s; delay_sigma=delay_sigma_s
+    delay_rate=delay_rate_s; delay_rate_sigma=delay_rate_sigma_s
+    RefFreq=RefFreq_s
 
 # CrossReference
 obs2scan, obs2stat1_stat2 = read_nc_CR(path+"/CrossReference/ObsCrossRef.nc")
@@ -178,8 +206,8 @@ scan2sour = read_nc_CR_sour(path+"/CrossReference/SourceCrossRef.nc")
 CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path)
     
 # write NGS
-create_NGS(out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, YMDHM, second,RefFreq,\
+create_NGS(out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
            obs2scan, obs2stat1_stat2,scan2sour,coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum)
 
-read_nc(path+"/ISHIOKA/Met.nc")
+#read_nc(path+"/ISHIOKA/Met.nc")
