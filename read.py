@@ -2,6 +2,7 @@ import numpy as np
 from netCDF4 import Dataset
 from scipy.io import netcdf
 import os
+import sys
 
 def read_nc(file):
     rootgrp = netcdf.NetCDFFile(file, "r")
@@ -161,8 +162,8 @@ def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,del
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
     
-path='in/18APR24XU'
-out='out/180424XT.ngs'
+path=sys.argv[1]
+out=sys.argv[2]
     
 version,stations,sources = read_nc_head(path+"/Head.nc")
 
