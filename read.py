@@ -1,5 +1,4 @@
 import numpy as np
-from netCDF4 import Dataset
 from scipy.io import netcdf
 import os
 import sys
