@@ -1,0 +1,7 @@
+*.wrp
+*.nc
+*.gz
+*.hist
+out/*
+in/*
+ngs/*
