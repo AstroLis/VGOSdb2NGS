@@ -96,10 +96,15 @@ def read_nc_St(stations,path):
             CableCal[k] = rootgrp.variables['Cal-Cable'].data
         else:
             CableCal[k] = [0,]
-        rootgrp = netcdf.NetCDFFile(path+'/'+k.replace(' ','')+'/Met.nc', "r")
-        TempC[k] = rootgrp.variables['TempC'].data
-        AtmPres[k] = rootgrp.variables['AtmPres'].data
-        RelHum[k] = rootgrp.variables['RelHum'].data
+        if 'Met.nc' in os.listdir(path+'/'+k.replace(' ','')+'/'):
+            rootgrp = netcdf.NetCDFFile(path+'/'+k.replace(' ','')+'/Met.nc', "r")
+            TempC[k] = rootgrp.variables['TempC'].data
+            AtmPres[k] = rootgrp.variables['AtmPres'].data
+            RelHum[k] = rootgrp.variables['RelHum'].data
+        else:
+            TempC[k] = [0,]
+            AtmPres[k] = [0,]
+            RelHum[k] = [0,]
     return CableCal, TempC, AtmPres, RelHum
     
 def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
@@ -206,19 +211,20 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         out.write('{:10.5f}{:10.5f}    .00000    .00000    .00000    .00000          {:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][obs2scan[n_data1]-1],\
                   10**9*CableCal[stations[n_stat2-1]][obs2scan[n_data2]-1],i+1))
         #card 6
-        #print('card6',i,TempC[stations[n_stat1-1]][obs2scan[i]-1])
-        out.write('{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f} 0 0      {:8d}06\n'.format(TempC[stations[n_stat1-1]][obs2scan[i]-1],\
-                  TempC[stations[n_stat2-1]][obs2scan[i]-1],\
-                  AtmPres[stations[n_stat1-1]][obs2scan[i]-1],AtmPres[stations[n_stat2-1]][obs2scan[i]-1],\
-                  RelHum[stations[n_stat1-1]][obs2scan[i]-1]*100,RelHum[stations[n_stat2-1]][obs2scan[i]-1]*100,i+1))
+        #print('card6',i,n_stat1-1,obs2scan[i]-1,len(TempC[stations[n_stat1-1]]))
+        #print('card6',i,n_stat2-1,obs2scan[i]-1,len(TempC[stations[n_stat2-1]]))
+        out.write('{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f} 0 0      {:8d}06\n'.format(TempC[stations[n_stat1-1]][obs2scan[n_data1]-1],\
+                  TempC[stations[n_stat2-1]][obs2scan[n_data2]-1],\
+                  AtmPres[stations[n_stat1-1]][obs2scan[n_data1]-1],AtmPres[stations[n_stat2-1]][obs2scan[n_data2]-1],\
+                  RelHum[stations[n_stat1-1]][obs2scan[n_data1]-1]*100,RelHum[stations[n_stat2-1]][obs2scan[n_data2]-1]*100,i+1))
         #card 8
         out.write('{:20.10f}{:10f}{:20.10f}{:10f}  0       {:8d}08\n'.format(-tau_ion[i]*10**9,0,-tau_r_ion[i]*10**9,0,i+1))
         #card 9
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
     
-path='in/18OCT08XA'#sys.argv[1]
-out= 'out/18OCT08XA'#sys.argv[2]
+path='in/18AUG21XA'#sys.argv[1]
+out= 'out/18AUG21XA'#sys.argv[2]
     
 version,stations,sources = read_nc_head(path+"/Head.nc")
 
@@ -275,15 +281,7 @@ scan2sour = read_nc_CR_sour(path+"/CrossReference/SourceCrossRef.nc")
 
 # station
 print(path)
-if 'Met.nc' in [i[-6:] for i in list(os.walk(path))]:
-    CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path)
-    print('TempC',TempC[:10])
-else:
-    print('cant find Met.nc')
-    print([i[-6:-1] for i in list(os.walk(path))])
-    CableCal={}; TempC={}; AtmPres={}; RelHum={}
-    for i in stations:
-        CableCal[i]=[0,]; TempC[i]=[0,]; AtmPres[i]=[0,]; RelHum[i]=[0,]
+CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path)
     
 # write NGS
 create_NGS(path[-9:],out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
