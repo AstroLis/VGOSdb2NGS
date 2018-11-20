@@ -92,26 +92,72 @@ def read_nc_O_RF(file):
 def read_nc_St(stations,path):
     CableCal={}; TempC={}; AtmPres={}; RelHum={}
     for k in stations:
-        rootgrp = netcdf.NetCDFFile(path+'/'+k.replace(' ','')+'/Cal-Cable.nc', "r")
-        CableCal[k] = rootgrp.variables['Cal-Cable'].data
+        if 'Cal-Cable.nc' in os.listdir(path+'/'+k.replace(' ','')+'/'):
+            rootgrp = netcdf.NetCDFFile(path+'/'+k.replace(' ','')+'/Cal-Cable.nc', "r")
+            CableCal[k] = rootgrp.variables['Cal-Cable'].data
+        else:
+            CableCal[k] = [0,]
         rootgrp = netcdf.NetCDFFile(path+'/'+k.replace(' ','')+'/Met.nc', "r")
         TempC[k] = rootgrp.variables['TempC'].data
         AtmPres[k] = rootgrp.variables['AtmPres'].data
         RelHum[k] = rootgrp.variables['RelHum'].data
     return CableCal, TempC, AtmPres, RelHum
     
-def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
+def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
            obs2scan, obs2stat1_stat2,scan2sour,coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum):
+    # correct data
+    #RelHum_i={}; CableCal_i={}
+    if len(second)==1:
+        second=list(second)
+        for i in range(len(YMDHM)):
+            second.append(second[0])
+
+    for i in stations:
+        #RelHum_i[i]=[]; CableCal_i[i]=[]
+        if len(RelHum[i])==1:
+            RelHum[i]=[RelHum[i][0],]
+            for j in range(len(delay)):
+                RelHum[i].append(RelHum[i][0])
+        if len(CableCal[i])==1:
+            CableCal[i]=[CableCal[i][0],]
+            for j in range(len(delay)):
+                CableCal[i].append(CableCal[i][0])
+        if len(TempC[i])==1:
+            TempC[i]=[TempC[i][0],]
+            for j in range(len(delay)):
+                TempC[i].append(TempC[i][0])
+        if len(AtmPres[i])==1:
+            AtmPres[i]=[AtmPres[i][0],]
+            for j in range(len(delay)):
+                AtmPres[i].append(AtmPres[i][0])
+    n_data={}
+    for i in stations:
+        n_data[i]=[]
+    for ni,i in enumerate(obs2stat1_stat2):
+        for nj, j in enumerate(stations):
+            if i[0]-1==nj or i[1]-1==nj:
+                #n_data[j].append(obs2scan[ni]-1)
+                n_data[j].append(ni)
+    for i in stations:
+        print(i,n_data[i][:10])
+    
     out=open(file,'w')
-    out.write('DATA IN NGS FORMAT FROM DATABASE '+file[-16:-7]+'_V'+version[0][2:5]+'\n')
+    out.write('DATA IN NGS FORMAT FROM DATABASE '+name+'_V'+version[0][2:5]+'\n')
     out.write('Observed delays and rates in card #2, modified errors in card #9\n')
     #Site cards
     dic_axis_type={1:'EQ  ', 2:'XY  ', 3:'AZEL'}
+    axis_type_i=[]
+    if len(axis_type)==1:
+        for i in range(len(stations)):
+            axis_type_i.append(axis_type[0])
+    else:
+        axis_type_i=[i for i in axis_type]
+    print(len(axis_type))
     for i in range(len(stations)):
         out.write('{:8s}  {:15.5f}{:15.5f}{:15.5f} {:4s}{:10.5f}\n'.format(stations[i],
                   coord_stations[i][0],coord_stations[i][1],coord_stations[i][2],
-                  dic_axis_type[axis_type[i]],axis_offset[i]))
+                  dic_axis_type[axis_type_i[i]],axis_offset[i]))
     out.write('$END\n')
     # Radio source position cards
     for i in range(len(sources)):
@@ -135,6 +181,13 @@ def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,del
             n_stat1=obs2stat1_stat2[0]
             n_stat2=obs2stat1_stat2[1]
         n_sour=scan2sour[obs2scan[i]-1]-1
+
+        #print(stations[n_stat1-1],stations[n_stat2-1],obs2scan[i]-1)
+        #print(n_data[stations[n_stat1-1]][0],n_data[stations[n_stat2-1]][0])
+        n_data1=n_data[stations[n_stat1-1]].index(i)#obs2scan[i]-1)
+        n_data2=n_data[stations[n_stat2-1]].index(i)#obs2scan[i]-1)
+        #print('n_data',n_data1,n_data2)
+
         #card 1
         out.write('{:10s}{:10s}{:8s}{:5d} {:02d} {:02d} {:02d} {:02d}{:15.10f}          {:8d}01\n'.format(stations[n_stat1-1],
                   stations[n_stat2-1],sources[n_sour],
@@ -149,9 +202,12 @@ def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,del
         out.write('       .00   .0       .00   .0       .00   .0       .00   .0          '+'{:8d}'.format(i+1)+'04\n')
         #out.write('{:s}{:8d}04\n'.format(70*' ',i+1))
         #card 5
-        out.write('{:10.5f}{:10.5f}    .00000    .00000    .00000    .00000          {:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][obs2scan[i]-1],\
-                  10**9*CableCal[stations[n_stat2-1]][obs2scan[i]-1],i+1))
+        #print('card5',stations[n_stat1-1],len(CableCal[stations[n_stat1-1]]),n_data1,i)
+        #print('card5',stations[n_stat2-1],len(CableCal[stations[n_stat2-1]]),n_data2,i)
+        out.write('{:10.5f}{:10.5f}    .00000    .00000    .00000    .00000          {:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][obs2scan[n_data1]-1],\
+                  10**9*CableCal[stations[n_stat2-1]][obs2scan[n_data2]-1],i+1))
         #card 6
+        #print('card6',i,TempC[stations[n_stat1-1]][obs2scan[i]-1])
         out.write('{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f} 0 0      {:8d}06\n'.format(TempC[stations[n_stat1-1]][obs2scan[i]-1],\
                   TempC[stations[n_stat2-1]][obs2scan[i]-1],\
                   AtmPres[stations[n_stat1-1]][obs2scan[i]-1],AtmPres[stations[n_stat2-1]][obs2scan[i]-1],\
@@ -162,8 +218,8 @@ def create_NGS(file, version,stations,sources, delay,delay_sigma, delay_rate,del
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
     
-path=sys.argv[1]
-out=sys.argv[2]
+path='in/18OCT08XA'#sys.argv[1]
+out= 'out/18OCT08XA'#sys.argv[2]
     
 version,stations,sources = read_nc_head(path+"/Head.nc")
 
@@ -178,16 +234,31 @@ delay_rate_x,delay_rate_sigma_x=read_nc_delay_rate(path+'/Observables/GroupRate_
 RefFreq_x = read_nc_O_RF(path+'/Observables/RefFreq_bX.nc')
 
 # Observables S
-delay_s,delay_sigma_s=read_nc_delay(path+'/Observables/GroupDelay_bS.nc')
-delay_rate_s,delay_rate_sigma_s=read_nc_delay_rate(path+'/Observables/GroupRate_bS.nc')
-RefFreq_s = read_nc_O_RF(path+'/Observables/RefFreq_bS.nc')
+if 'GroupDelay_bS.nc' in os.listdir(path+'/Observables/'):
+    delay_s,delay_sigma_s=read_nc_delay(path+'/Observables/GroupDelay_bS.nc')
+else:
+    delay_s=[0,]; delay_sigma_s=[0,]
+if 'GroupRate_bS.nc' in os.listdir(path+'/Observables/'):
+    delay_rate_s,delay_rate_sigma_s=read_nc_delay_rate(path+'/Observables/GroupRate_bS.nc')
+else:
+    delay_rate_s=[0,]; delay_rate_sigma_s=[0,]
+if 'RefFreq_bS.nc' in os.listdir(path+'/Observables/'):
+    RefFreq_s = read_nc_O_RF(path+'/Observables/RefFreq_bS.nc')
+else:
+    RefFreq_s=[0,]
 
 # Observables
 YMDHM, second = read_nc_O_time(path+"/Observables/TimeUTC.nc")
 tau_ion=[]; tau_r_ion=[]
 for i in range(len(delay_x)):
-    tau_ion.append((delay_x[i]-delay_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
-    tau_r_ion.append((delay_rate_x[i]-delay_rate_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
+    if len(delay_s)>1:
+        tau_ion.append((delay_x[i]-delay_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
+    else:
+        tau_ion.append(0)
+    if len(delay_rate_s)>1:
+        tau_r_ion.append((delay_rate_x[i]-delay_rate_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
+    else:
+        tau_r_ion.append(0)
 
 # S or X
 if path[-2]=='X':
@@ -204,10 +275,19 @@ obs2scan, obs2stat1_stat2 = read_nc_CR(path+"/CrossReference/ObsCrossRef.nc")
 scan2sour = read_nc_CR_sour(path+"/CrossReference/SourceCrossRef.nc")
 
 # station
-CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path)
+print(path)
+if 'Met.nc' in [i[-6:] for i in list(os.walk(path))]:
+    CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path)
+    print('TempC',TempC[:10])
+else:
+    print('cant find Met.nc')
+    print([i[-6:-1] for i in list(os.walk(path))])
+    CableCal={}; TempC={}; AtmPres={}; RelHum={}
+    for i in stations:
+        CableCal[i]=[0,]; TempC[i]=[0,]; AtmPres[i]=[0,]; RelHum[i]=[0,]
     
 # write NGS
-create_NGS(out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
+create_NGS(path[-9:],out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
            obs2scan, obs2stat1_stat2,scan2sour,coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum)
 
