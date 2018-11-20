@@ -107,7 +107,8 @@ def read_nc_St(stations,path):
             RelHum[k] = [0,]
     return CableCal, TempC, AtmPres, RelHum
     
-def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
+def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, \
+           tau_ion, d_tau_ion, tau_r_ion, d_tau_r_ion, YMDHM, second,RefFreq,\
            obs2scan, obs2stat1_stat2,scan2sour,coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum):
     # correct data
@@ -218,7 +219,7 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
                   AtmPres[stations[n_stat1-1]][obs2scan[n_data1]-1],AtmPres[stations[n_stat2-1]][obs2scan[n_data2]-1],\
                   RelHum[stations[n_stat1-1]][obs2scan[n_data1]-1]*100,RelHum[stations[n_stat2-1]][obs2scan[n_data2]-1]*100,i+1))
         #card 8
-        out.write('{:20.10f}{:10f}{:20.10f}{:10f}  0       {:8d}08\n'.format(-tau_ion[i]*10**9,0,-tau_r_ion[i]*10**9,0,i+1))
+        out.write('{:20.10f}{:10f}{:20.10f}{:10f}  0       {:8d}08\n'.format(-tau_ion[i]*10**9,d_tau_ion[i]*10**12,-tau_r_ion[i]*10**9,d_tau_r_ion[i]*10**12,i+1))
         #card 9
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
@@ -255,15 +256,30 @@ else:
 # Observables
 YMDHM, second = read_nc_O_time(path+"/Observables/TimeUTC.nc")
 tau_ion=[]; tau_r_ion=[]
+d_tau_ion=[]; d_tau_r_ion=[]
+# what is d_RefFreq_s and d_RefFreq_x
+d_RefFreq_s=0; d_RefFreq_x=0
 for i in range(len(delay_x)):
     if len(delay_s)>1:
-        tau_ion.append((delay_x[i]-delay_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
+        tau_ion_i=(delay_x[i]-delay_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0])
+        d_tau_ion_i= tau_ion_i * ( (delay_sigma_s[i]+delay_sigma_x[i])/(delay_s[i]+delay_x[i]) + \
+                                    2*d_RefFreq_s/RefFreq_s + \
+                                    2*(RefFreq_s*d_RefFreq_s+RefFreq_x*d_RefFreq_x)/(RefFreq_s*RefFreq_s+RefFreq_x*RefFreq_x) )
+        tau_ion.append(tau_ion_i)
+        d_tau_ion.append(d_tau_ion_i[0])
     else:
         tau_ion.append(0)
+        d_tau_ion.append(0)
     if len(delay_rate_s)>1:
-        tau_r_ion.append((delay_rate_x[i]-delay_rate_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0]))
+        tau_r_ion_i=(delay_rate_x[i]-delay_rate_s[i])*RefFreq_s[0]*RefFreq_s[0]/(RefFreq_x[0]*RefFreq_x[0]-RefFreq_s[0]*RefFreq_s[0])
+        d_tau_r_ion_i=tau_r_ion_i * ( (delay_rate_sigma_s[i]+delay_rate_sigma_x[i])/(delay_s[i]+delay_x[i]) + \
+                                    2*d_RefFreq_s/RefFreq_s + \
+                                    2*(RefFreq_s*d_RefFreq_s+RefFreq_x*d_RefFreq_x)/(RefFreq_s*RefFreq_s+RefFreq_x*RefFreq_x) )
+        tau_r_ion.append(tau_r_ion_i)
+        d_tau_r_ion.append(d_tau_r_ion_i[0])
     else:
         tau_r_ion.append(0)
+        d_tau_r_ion.append(0)
 
 # S or X
 if path[-2]=='X':
@@ -284,7 +300,8 @@ print(path)
 CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path)
     
 # write NGS
-create_NGS(path[-9:],out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, tau_ion,tau_r_ion, YMDHM, second,RefFreq,\
+create_NGS(path[-9:],out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, \
+           tau_ion, d_tau_ion, tau_r_ion, d_tau_r_ion, YMDHM, second,RefFreq,\
            obs2scan, obs2stat1_stat2,scan2sour,coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum)
 
