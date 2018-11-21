@@ -136,16 +136,37 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
             AtmPres[i]=[AtmPres[i][0],]
             for j in range(len(delay)):
                 AtmPres[i].append(AtmPres[i][0])
+     
+    scan2stat1_stat2=[]
+    for i in range(obs2scan[-1]):
+        scan2stat1_stat2.append([])
+    
+    for ni,i in enumerate(obs2stat1_stat2):
+        #print(obs2scan[ni]-1)
+        if i[0]-1 not in scan2stat1_stat2[obs2scan[ni]-1]:
+            scan2stat1_stat2[obs2scan[ni]-1].append(i[0]-1)
+        if i[1]-1 not in scan2stat1_stat2[obs2scan[ni]-1]:
+            scan2stat1_stat2[obs2scan[ni]-1].append(i[1]-1)
+        #exit(0)
+    print('after exit',len(scan2stat1_stat2),scan2stat1_stat2[:10])
+    
+    out=open('out.txt','w')            
     n_data={}
     for i in stations:
         n_data[i]=[]
-    for ni,i in enumerate(obs2stat1_stat2):
+    for ni,i in enumerate(scan2stat1_stat2):
+        out.write('scan2stat1_stat2 ni='+str(ni)+' i='+str(i)+'\n')
         for nj, j in enumerate(stations):
-            if i[0]-1==nj or i[1]-1==nj:
+            out.write('stations nj='+str(nj)+' j='+str(j)+'\n')
+            if nj in i:
+                out.write('n_data['+str(j)+'.append('+str(ni)+')\n')
                 #n_data[j].append(obs2scan[ni]-1)
                 n_data[j].append(ni)
+                if nj==2 and ni<200:
+                    print('create n_data',stations[nj],ni,i,n_data[j])
     for i in stations:
-        print(i,n_data[i][:10])
+        print(i,n_data[i][-10:],len(n_data[i]))
+    out.close()
     
     out=open(file,'w')
     out.write('DATA IN NGS FORMAT FROM DATABASE '+name+'_V'+version[0][2:5]+'\n')
@@ -187,11 +208,11 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
             n_stat2=obs2stat1_stat2[1]
         n_sour=scan2sour[obs2scan[i]-1]-1
 
-        #print(stations[n_stat1-1],stations[n_stat2-1],obs2scan[i]-1)
+        #print(stations[n_stat1-1],stations[n_stat2-1],i,obs2scan[i]-1)
         #print(n_data[stations[n_stat1-1]][0],n_data[stations[n_stat2-1]][0])
-        n_data1=n_data[stations[n_stat1-1]].index(i)#obs2scan[i]-1)
-        n_data2=n_data[stations[n_stat2-1]].index(i)#obs2scan[i]-1)
-        #print('n_data',n_data1,n_data2)
+        n_data1=n_data[stations[n_stat1-1]].index(obs2scan[i]-1)
+        n_data2=n_data[stations[n_stat2-1]].index(obs2scan[i]-1)
+        print('n_data',n_data1,n_data2,stations[n_stat1-1],stations[n_stat2-1],obs2scan[i]-1)
 
         #card 1
         out.write('{:10s}{:10s}{:8s}{:5d} {:02d} {:02d} {:02d} {:02d}{:15.10f}          {:8d}01\n'.format(stations[n_stat1-1],
@@ -199,7 +220,7 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
                   YMDHM[i][0],YMDHM[i][1],YMDHM[i][2],YMDHM[i][3],YMDHM[i][4],float(second[i]),i+1))
         #card 2
         out.write('{:20.7f}{:10.5f}{:20.10f}{:10.5f} 0      I {:8d}02\n'.format(delay[i]*10**9,delay_sigma[i]*10**9,
-                  delay_rate[i]*10**9,delay_rate_sigma[i]*10**9,i+1))
+                  delay_rate[i]*10**12,delay_rate_sigma[i]*10**12,i+1))
         #card 3
         out.write('    .00205    .00000    .00000    .00000    .000000000000000        0.'+'{:8d}'.format(i+1)+'03\n')
         #out.write('{:s}{:8d}03\n'.format(70*' ',i+1))
@@ -212,12 +233,12 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         out.write('{:10.5f}{:10.5f}    .00000    .00000    .00000    .00000          {:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][obs2scan[n_data1]-1],\
                   10**9*CableCal[stations[n_stat2-1]][obs2scan[n_data2]-1],i+1))
         #card 6
-        #print('card6',i,n_stat1-1,obs2scan[i]-1,len(TempC[stations[n_stat1-1]]))
-        #print('card6',i,n_stat2-1,obs2scan[i]-1,len(TempC[stations[n_stat2-1]]))
-        out.write('{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f} 0 0      {:8d}06\n'.format(TempC[stations[n_stat1-1]][obs2scan[n_data1]-1],\
-                  TempC[stations[n_stat2-1]][obs2scan[n_data2]-1],\
-                  AtmPres[stations[n_stat1-1]][obs2scan[n_data1]-1],AtmPres[stations[n_stat2-1]][obs2scan[n_data2]-1],\
-                  RelHum[stations[n_stat1-1]][obs2scan[n_data1]-1]*100,RelHum[stations[n_stat2-1]][obs2scan[n_data2]-1]*100,i+1))
+        #print('card6 ',i,n_stat1-1,n_data1,obs2scan[n_data1]-1,len(TempC[stations[n_stat1-1]]),TempC[stations[n_stat1-1]][obs2scan[n_data1]-1])
+        #print('card6',i,n_stat2-1,n_data2,obs2scan[n_data2]-1,len(TempC[stations[n_stat2-1]]),TempC[stations[n_stat2-1]][obs2scan[n_data2]-1])
+        out.write('{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f}{:10.3f} 0 0      {:8d}06\n'.format(TempC[stations[n_stat1-1]][n_data1],\
+                  TempC[stations[n_stat2-1]][n_data2],\
+                  AtmPres[stations[n_stat1-1]][n_data1],AtmPres[stations[n_stat2-1]][n_data2],\
+                  RelHum[stations[n_stat1-1]][n_data1]*100,RelHum[stations[n_stat2-1]][n_data2]*100,i+1))
         #card 8
         out.write('{:20.10f}{:10f}{:20.10f}{:10f}  0       {:8d}08\n'.format(-tau_ion[i]*10**9,d_tau_ion[i]*10**12,-tau_r_ion[i]*10**9,d_tau_r_ion[i]*10**12,i+1))
         #card 9
