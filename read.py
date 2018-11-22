@@ -184,7 +184,7 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
     out.write('DATA IN NGS FORMAT FROM DATABASE '+name+'_V'+version[0][2:5]+'\n')
     out.write('Observed delays and rates in card #2, modified errors in card #9\n')
     #Site cards
-    dic_axis_type={1:'EQ  ', 2:'XY  ', 3:'AZEL'}
+    dic_axis_type={1:'EQUA', 2:'XY  ', 3:'AZEL', 4:'RICH', 5:'X-YE', 6:'X-YN'}
     axis_type_i=[]
     if len(axis_type)==1:
         for i in range(len(stations)):
@@ -202,10 +202,12 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         h=int((coord_sources[i][0]*12/np.pi)//1)
         mh=int(((coord_sources[i][0]*12/np.pi)%1)*60//1)
         sh=((coord_sources[i][0]*12/np.pi)%1)*60%1*60
+        sign=' '
         d=int((coord_sources[i][1]*180/np.pi)//1)
         md=int(((coord_sources[i][1]*180/np.pi)%1)*60//1)
         sd=((coord_sources[i][1]*180/np.pi)%1)*60%1*60
-        out.write('{:8s}  {:2d} {:2d} {:10f} {:2d} {:2d} {:10f}\n'.format(sources[i],h,mh,sh,d,md,sd))
+        if (d>0):sign='-'
+        out.write('{:8s}  {:2d} {:2d} {:10f} {:1s}{:2d} {:2d} {:10f}\n'.format(sources[i],h,mh,sh,sign,d,md,sd))
     out.write('$END\n')
     # Auxiliary parameters
     out.write('{:15.10e}            GR PH\n'.format(RefFreq[0]))
