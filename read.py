@@ -2,6 +2,7 @@ import numpy as np
 from scipy.io import netcdf
 import os
 import sys
+import tarfile
 
 def read_nc(file):
     rootgrp = netcdf.NetCDFFile(file, "r")
@@ -20,6 +21,7 @@ def read_nc(file):
 
 def read_nc_head(file):
     rootgrp = netcdf.NetCDFFile(file, "r")
+    #rootgrp=file
     vers = [''.join([ii.decode('UTF-8') for ii in list(rootgrp.variables['vgosDB_Version'])])]
     stat = [''.join([ii.decode('UTF-8') for ii in k]) for k in list(rootgrp.variables['StationList'])]
     sour = [''.join([ii.decode('UTF-8') for ii in k]) for k in list(rootgrp.variables['SourceList'])]
@@ -88,16 +90,26 @@ def read_nc_O_RF(file):
     rootgrp.close()
     return RefFreq
 
-def read_nc_St(stations,path):
+def read_nc_St(stations,path,members):
     CableCal={}; TempC={}; AtmPres={}; RelHum={}
+    
+    f_C=False; f_M=False
+    for m in members:
+        if 'Cal-Cable.nc' in m.name:
+            f_C=True
+        if 'Met.nc' in m.name:
+            f_M=True
+
     for k in stations:
-        if 'Cal-Cable.nc' in os.listdir(path+'/'+k.replace(' ','')+'/'):
-            rootgrp = netcdf.NetCDFFile(path+'/'+k.replace(' ','')+'/Cal-Cable.nc', "r")
+        if f_C:
+            rr=tar.extractfile(path[-16:-7]+'/'+k.replace(' ','')+'/Cal-Cable.nc')
+            rootgrp = netcdf.NetCDFFile(rr, "r")
             CableCal[k] = rootgrp.variables['Cal-Cable'].data
         else:
             CableCal[k] = [0,]
-        if 'Met.nc' in os.listdir(path+'/'+k.replace(' ','')+'/'):
-            rootgrp = netcdf.NetCDFFile(path+'/'+k.replace(' ','')+'/Met.nc', "r")
+        if f_M:
+            rr=tar.extractfile(path[-16:-7]+'/'+k.replace(' ','')+'/Met.nc')
+            rootgrp = netcdf.NetCDFFile(rr, "r")
             TempC[k] = rootgrp.variables['TempC'].data
             AtmPres[k] = rootgrp.variables['AtmPres'].data
             RelHum[k] = rootgrp.variables['RelHum'].data
@@ -245,37 +257,56 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
     
-path='in/18AUG21XA'#sys.argv[1]
+path='in/18AUG21XA.tar.gz'#sys.argv[1]
 out= 'out/18AUG21XA'#sys.argv[2]
-    
-version,stations,sources = read_nc_head(path+"/Head.nc")
+
+tar = tarfile.open(path, "r")
+members = tar.getmembers()
+
+rr=tar.extractfile(path[-16:-7]+"/Head.nc")
+version,stations,sources = read_nc_head(rr)
 
 # Apriori
-coord_stations=read_nc_stat(path+'/Apriori/Station.nc')
-coord_sources=read_nc_sour(path+'/Apriori/Source.nc')
-axis_type, axis_offset=read_nc_A_ant(path+"/Apriori/Antenna.nc")
+rr=tar.extractfile(path[-16:-7]+'/Apriori/Station.nc')
+coord_stations=read_nc_stat(rr)
+rr=tar.extractfile(path[-16:-7]+'/Apriori/Source.nc')
+coord_sources=read_nc_sour(rr)
+rr=tar.extractfile(path[-16:-7]+'/Apriori/Antenna.nc')
+axis_type, axis_offset=read_nc_A_ant(rr)
 
 # Observables X
-delay_x,delay_sigma_x=read_nc_delay(path+'/Observables/GroupDelay_bX.nc')
-delay_rate_x,delay_rate_sigma_x=read_nc_delay_rate(path+'/Observables/GroupRate_bX.nc')
-RefFreq_x = read_nc_O_RF(path+'/Observables/RefFreq_bX.nc')
+rr=tar.extractfile(path[-16:-7]+'/Observables/GroupDelay_bX.nc')
+delay_x,delay_sigma_x=read_nc_delay(rr)
+rr=tar.extractfile(path[-16:-7]+'/Observables/GroupRate_bX.nc')
+delay_rate_x,delay_rate_sigma_x=read_nc_delay_rate(rr)
+rr=tar.extractfile(path[-16:-7]+'/Observables/RefFreq_bX.nc')
+RefFreq_x = read_nc_O_RF(rr)
 
 # Observables S
-if 'GroupDelay_bS.nc' in os.listdir(path+'/Observables/'):
-    delay_s,delay_sigma_s=read_nc_delay(path+'/Observables/GroupDelay_bS.nc')
-else:
+f_GDS=False; f_GRS=False; f_RFS=False
+for m in members:
+    if 'GroupDelay_bS.nc' in m.name:
+        rr=tar.extractfile(path[-16:-7]+'/Observables/GroupDelay_bS.nc')
+        delay_s,delay_sigma_s=read_nc_delay(rr)
+        f_GDS=True
+    if 'GroupRate_bS.nc' in m.name:
+        rr=tar.extractfile(path[-16:-7]+'/Observables/GroupRate_bS.nc')
+        delay_rate_s,delay_rate_sigma_s=read_nc_delay_rate(rr)
+        f_GRS=True
+    if 'RefFreq_bS.nc' in m.name:
+        rr=tar.extractfile(path[-16:-7]+'/Observables/RefFreq_bS.nc')
+        RefFreq_s = read_nc_O_RF(rr)
+        f_RFS=True
+if not f_GDS:
     delay_s=[0,]; delay_sigma_s=[0,]
-if 'GroupRate_bS.nc' in os.listdir(path+'/Observables/'):
-    delay_rate_s,delay_rate_sigma_s=read_nc_delay_rate(path+'/Observables/GroupRate_bS.nc')
-else:
+if not f_GRS:
     delay_rate_s=[0,]; delay_rate_sigma_s=[0,]
-if 'RefFreq_bS.nc' in os.listdir(path+'/Observables/'):
-    RefFreq_s = read_nc_O_RF(path+'/Observables/RefFreq_bS.nc')
-else:
+if not f_RFS:
     RefFreq_s=[0,]
 
 # Observables
-YMDHM, second = read_nc_O_time(path+"/Observables/TimeUTC.nc")
+rr=tar.extractfile(path[-16:-7]+'/Observables/TimeUTC.nc')
+YMDHM, second = read_nc_O_time(rr)
 tau_ion=[]; tau_r_ion=[]
 d_tau_ion=[]; d_tau_r_ion=[]
 # what is d_RefFreq_s and d_RefFreq_x
@@ -303,25 +334,27 @@ for i in range(len(delay_x)):
         d_tau_r_ion.append(0)
 
 # S or X
-if path[-2]=='X':
+if path[-9]=='X':
     delay=delay_x; delay_sigma=delay_sigma_x
     delay_rate=delay_rate_x; delay_rate_sigma=delay_rate_sigma_x
     RefFreq=RefFreq_x
-if path[-2]=='S':
+if path[-9]=='S':
     delay=delay_s; delay_sigma=delay_sigma_s
     delay_rate=delay_rate_s; delay_rate_sigma=delay_rate_sigma_s
     RefFreq=RefFreq_s
 
 # CrossReference
-obs2scan, obs2stat1_stat2 = read_nc_CR(path+"/CrossReference/ObsCrossRef.nc")
-scan2sour = read_nc_CR_sour(path+"/CrossReference/SourceCrossRef.nc")
+rr=tar.extractfile(path[-16:-7]+'/CrossReference/ObsCrossRef.nc')
+obs2scan, obs2stat1_stat2 = read_nc_CR(rr)
+rr=tar.extractfile(path[-16:-7]+'/CrossReference/SourceCrossRef.nc')
+scan2sour = read_nc_CR_sour(rr)
 
 # station
 print(path)
-CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path)
+CableCal, TempC, AtmPres, RelHum=read_nc_St(stations,path,members)
     
 # write NGS
-create_NGS(path[-9:],out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, \
+create_NGS(path[-16:-7],out, version,stations,sources, delay,delay_sigma, delay_rate,delay_rate_sigma, \
            tau_ion, d_tau_ion, tau_r_ion, d_tau_r_ion, YMDHM, second,RefFreq,\
            obs2scan, obs2stat1_stat2,scan2sour,coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum)
