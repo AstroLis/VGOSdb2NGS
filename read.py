@@ -182,7 +182,7 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
             axis_type_i.append(axis_type[0])
     else:
         axis_type_i=[i for i in axis_type]
-    print(len(axis_type))
+    #print(len(axis_type))
     for i in range(len(stations)):
         out.write('{:8s}  {:15.5f}{:15.5f}{:15.5f} {:4s}{:10.5f}\n'.format(stations[i],
                   coord_stations[i][0],coord_stations[i][1],coord_stations[i][2],
@@ -217,7 +217,7 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         #print(n_data[stations[n_stat1-1]][0],n_data[stations[n_stat2-1]][0])
         n_data1=n_data[stations[n_stat1-1]].index(obs2scan[i]-1)
         n_data2=n_data[stations[n_stat2-1]].index(obs2scan[i]-1)
-        print('n_data',n_data1,n_data2,stations[n_stat1-1],stations[n_stat2-1],obs2scan[i]-1)
+        #print('n_data',n_data1,n_data2,stations[n_stat1-1],stations[n_stat2-1],obs2scan[i]-1)
 
         #card 1
         out.write('{:10s}{:10s}{:8s}{:5d} {:02d} {:02d} {:02d} {:02d}{:15.10f}          {:8d}01\n'.format(stations[n_stat1-1],
