@@ -160,25 +160,16 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         if i[1]-1 not in scan2stat1_stat2[obs2scan[ni]-1]:
             scan2stat1_stat2[obs2scan[ni]-1].append(i[1]-1)
         #exit(0)
-    print('after exit',len(scan2stat1_stat2),scan2stat1_stat2[:10])
-    
-    out=open('out.txt','w')            
+    #print('after exit',len(scan2stat1_stat2),scan2stat1_stat2[:10])
+            
     n_data={}
     for i in stations:
         n_data[i]=[]
     for ni,i in enumerate(scan2stat1_stat2):
-        out.write('scan2stat1_stat2 ni='+str(ni)+' i='+str(i)+'\n')
         for nj, j in enumerate(stations):
-            out.write('stations nj='+str(nj)+' j='+str(j)+'\n')
             if nj in i:
-                out.write('n_data['+str(j)+'.append('+str(ni)+')\n')
                 #n_data[j].append(obs2scan[ni]-1)
                 n_data[j].append(ni)
-                if nj==2 and ni<200:
-                    print('create n_data',stations[nj],ni,i,n_data[j])
-    for i in stations:
-        print(i,n_data[i][-10:],len(n_data[i]))
-    out.close()
     
     out=open(file,'w')
     out.write('DATA IN NGS FORMAT FROM DATABASE '+name+'_V'+version[0][2:5]+'\n')
@@ -259,8 +250,8 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
     
-path='in/18JAN25XE.tar.gz'#sys.argv[1]
-out= 'out/18JAN25XE'#sys.argv[2]
+path=sys.argv[1]
+out= sys.argv[2]
 
 tar = tarfile.open(path, "r")
 members = tar.getmembers()
