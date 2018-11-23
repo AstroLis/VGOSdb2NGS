@@ -252,7 +252,7 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
                   AtmPres[stations[n_stat1-1]][n_data1],AtmPres[stations[n_stat2-1]][n_data2],\
                   RelHum[stations[n_stat1-1]][n_data1]*100,RelHum[stations[n_stat2-1]][n_data2]*100,i+1))
         #card 8
-        out.write('{:20.10f}{:10f}{:20.10f}{:10f}  0       {:8d}08\n'.format(-tau_ion[i]*10**9,d_tau_ion[i]*10**12,-tau_r_ion[i]*10**9,d_tau_r_ion[i]*10**12,i+1))
+        out.write('{:20.10f}{:10f}{:20.10f}{:10f}  0       {:8d}08\n'.format(-tau_ion[i]*10**9,d_tau_ion[i]*10**9,-tau_r_ion[i]*10**12,d_tau_r_ion[i]*10**12,i+1))
         #card 9
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
