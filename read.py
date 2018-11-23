@@ -244,8 +244,8 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         #card 5
         #print('card5',stations[n_stat1-1],len(CableCal[stations[n_stat1-1]]),n_data1,i)
         #print('card5',stations[n_stat2-1],len(CableCal[stations[n_stat2-1]]),n_data2,i)
-        out.write('{:10.5f}{:10.5f}    .00000    .00000    .00000    .00000          {:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][obs2scan[n_data1]-1],\
-                  10**9*CableCal[stations[n_stat2-1]][obs2scan[n_data2]-1],i+1))
+        out.write('{:10.5f}{:10.5f}    .00000    .00000    .00000    .00000          {:8d}05\n'.format(10**9*CableCal[stations[n_stat1-1]][n_data1],\
+                  10**9*CableCal[stations[n_stat2-1]][n_data2],i+1))
         #card 6
         #print('card6 ',i,n_stat1-1,n_data1,obs2scan[n_data1]-1,len(TempC[stations[n_stat1-1]]),TempC[stations[n_stat1-1]][obs2scan[n_data1]-1])
         #print('card6',i,n_stat2-1,n_data2,obs2scan[n_data2]-1,len(TempC[stations[n_stat2-1]]),TempC[stations[n_stat2-1]][obs2scan[n_data2]-1])
@@ -259,8 +259,8 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         out.write('{:s}{:8d}09\n'.format(70*' ',i+1))
     out.close()
     
-path='in/18AUG21XA.tar.gz'#sys.argv[1]
-out= 'out/18AUG21XA'#sys.argv[2]
+path='in/18JAN25XE.tar.gz'#sys.argv[1]
+out= 'out/18JAN25XE'#sys.argv[2]
 
 tar = tarfile.open(path, "r")
 members = tar.getmembers()
