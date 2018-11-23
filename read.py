@@ -153,23 +153,30 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
     for i in range(obs2scan[-1]):
         scan2stat1_stat2.append([])
     
-    for ni,i in enumerate(obs2stat1_stat2):
-        #print(obs2scan[ni]-1)
-        if i[0]-1 not in scan2stat1_stat2[obs2scan[ni]-1]:
-            scan2stat1_stat2[obs2scan[ni]-1].append(i[0]-1)
-        if i[1]-1 not in scan2stat1_stat2[obs2scan[ni]-1]:
-            scan2stat1_stat2[obs2scan[ni]-1].append(i[1]-1)
-        #exit(0)
+    if len(obs2stat1_stat2)>2:
+        for ni,i in enumerate(obs2stat1_stat2):
+            #print(obs2scan[ni]-1)
+            if i[0]-1 not in scan2stat1_stat2[obs2scan[ni]-1]:
+                scan2stat1_stat2[obs2scan[ni]-1].append(i[0]-1)
+            if i[1]-1 not in scan2stat1_stat2[obs2scan[ni]-1]:
+                scan2stat1_stat2[obs2scan[ni]-1].append(i[1]-1)
     #print('after exit',len(scan2stat1_stat2),scan2stat1_stat2[:10])
             
     n_data={}
-    for i in stations:
-        n_data[i]=[]
-    for ni,i in enumerate(scan2stat1_stat2):
-        for nj, j in enumerate(stations):
-            if nj in i:
-                #n_data[j].append(obs2scan[ni]-1)
-                n_data[j].append(ni)
+    if len(obs2stat1_stat2)>2:
+        for i in stations:
+            n_data[i]=[]
+        for ni,i in enumerate(scan2stat1_stat2):
+            for nj, j in enumerate(stations):
+                if nj in i:
+                    #n_data[j].append(obs2scan[ni]-1)
+                    n_data[j].append(ni)
+    else:
+        for i in stations:
+            n_data[i]=[]
+        for i in obs2scan:
+            n_data[stations[0]].append(i-1)
+            n_data[stations[1]].append(i-1)
     
     out=open(file,'w')
     out.write('DATA IN NGS FORMAT FROM DATABASE '+name+'_V'+version[0][2:5]+'\n')
