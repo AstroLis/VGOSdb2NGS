@@ -197,8 +197,8 @@ def create_NGS(name,file, version,stations,sources, delay,delay_sigma, delay_rat
         d=int((coord_sources[i][1]*180/np.pi)//1)
         md=int(((coord_sources[i][1]*180/np.pi)%1)*60//1)
         sd=((coord_sources[i][1]*180/np.pi)%1)*60%1*60
-        if (d>0):sign='-'
-        out.write('{:8s}  {:2d} {:2d} {:10f} {:1s}{:2d} {:2d} {:10f}\n'.format(sources[i],h,mh,sh,sign,d,md,sd))
+        if (d<0):sign='-'
+        out.write('{:8s}  {:2d} {:2d} {:10f} {:1s}{:2d} {:2d} {:10f}\n'.format(sources[i],h,mh,sh,sign,abs(d),abs(md),abs(sd)))
     out.write('$END\n')
     # Auxiliary parameters
     out.write('{:15.10e}            GR PH\n'.format(RefFreq[0]))
