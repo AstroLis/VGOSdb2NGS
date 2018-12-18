@@ -6,7 +6,7 @@ Version 0.1
 Usage:
 
 ```
-python read.py <input VGOSdb root directory> <output NGS card file name>
+python read.py --archives-dir <input VGOSdb root directory>
 ```
 
 Example for Windows:
