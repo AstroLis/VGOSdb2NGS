@@ -4,11 +4,11 @@ import logging
 import os
 import sys
 import tarfile
-from glob import glob
+import fnmatch
 #from pathlib import Path
 import numpy as np
 from scipy.io import netcdf
-np.seterr(all='warn', divide='raise')
+np.seterr(all='raise')
 
 logging.basicConfig(
     format=u'%(levelname)-8s [%(asctime)s] %(message)s',
@@ -55,7 +55,7 @@ def translate(vigos_archive):
         print('Head file for {} is missing, skipping'.format(name))
         logging.error(u'Head file for {} is missing, skipping'.format(name))
         return
-    
+
     try:
         rr = tar.extractfile(name + '/Apriori/Station.nc')
         coord_stations = read_nc_stat(rr)
@@ -87,17 +87,58 @@ def translate(vigos_archive):
     delay_rate_s, delay_rate_sigma_s = read_nc_delay_rate(rr)
     rr = tar.extractfile(name + '/Observables/RefFreq_bS.nc')
     RefFreq_s = read_nc_O_RF(rr)
-    
-    
+
+    try:
+        file_names = [m.name for m in members]
+        matched = fnmatch.filter( file_names, name + '/ObsEdit/GroupDelayFull_*bX*.nc')
+        rr = tar.extractfile(matched[-1])
+#        rr = tar.extractfile(name + '/ObsEdit/GroupDelayFull_iIVS_bX.nc') 
+        delay_x_full = read_nc_delayfull(rr)
+#        print('x_full', 'x')
+#        for i in range (len(delay_x_full) ):
+#            print (delay_x_full[i], delay_x[i])
+    except IndexError:
+        print('/ObsEdit file for {} is missing, skipping'.format(name))
+        logging.error(u'/ObsEdit for {} is missing, skipping'.format(name))
+        ambX = [0]*len(delay_x)
+        rr = tar.extractfile(name + '/Observables/AmbigSize_bX.nc')
+        ambX = read_ambiguity(rr)
+        if len(ambX) == 1:
+            ambX = ambX[0]*len(delay_x)
+   
+        delay_x_full = delay_x + ambX
+        print(ambX)
+  
+    try:
+        file_names = [m.name for m in members]
+        matched = fnmatch.filter( file_names, name + '/ObsEdit/GroupDelayFull_*bS*.nc')
+        rr = tar.extractfile(matched[-1])
+#        rr = tar.extractfile(name + '/ObsEdit/GroupDelayFull_bS.nc')
+#        rr = tar.extractfile(name + '/ObsEdit/GroupDelayFull_iIVS_bS.nc')
+        delay_s_full = read_nc_delayfull(rr)
+    except IndexError:
+        print('/ObsEdit file for {} is missing, skipping'.format(name))
+        logging.error(u'/ObsEdit for {} is missing, skipping'.format(name))  
+        rr = tar.extractfile(name + '/Observables/AmbigSize_bS.nc')
+        ambS = [0]*len(delay_s)
+        ambS = read_ambiguity(rr)
+        if len(ambS) == 1:
+            ambS = ambS[0]*len(delay_s)
+
+        delay_s_full = delay_s+ ambS
+        print(ambS)
+#        print(len(ambS))
+  
+        
    # S or X
     if name[-2] == 'X':
-        delay = delay_x
+        delay = delay_x_full
         delay_sigma = delay_sigma_x
         delay_rate = delay_rate_x
         delay_rate_sigma = delay_rate_sigma_x
         RefFreq = RefFreq_x
     if name[-2] == 'S':
-        delay = delay_s
+        delay = delay_s_full
         delay_sigma = delay_sigma_s
         delay_rate = delay_rate_s
         delay_rate_sigma = delay_rate_sigma_s
@@ -115,12 +156,24 @@ def translate(vigos_archive):
         logging.error(u'Correlation_bX file for {} is missing, skipping'.format(name))
 
 #  Data Quality Flag  for ngs card 2
+    dataQualityFlag = [0]*Nobs
     try:
-        rr = tar.extractfile(name + '/ObsEdit/Edit_iIVS.nc')
+        file_names = [m.name for m in members]
+        matched = fnmatch.filter( file_names, name + '/ObsEdit/Edit*.nc')
+        rr = tar.extractfile(matched[-1])
+#        rr = tar.extractfile(name + '/ObsEdit/Edit.nc')
+#        rr = tar.extractfile(name + '/ObsEdit/Edit_iIVS.nc')
         delayflag = read_DelayFlag(rr)
         dataQualityFlag = delayflag[0]
-#        print('222:',len(dataQualityFlag))
-    except KeyError:
+
+#        print(dataQualityFlag)  
+#        print(len(dataQualityFlag))
+        if len(dataQualityFlag) == 1:
+            dataQualityFlag = [0]*Nobs
+#            for i in range(Nobs):
+#               dataQualityFlag[i] = dataQualityFlag[0]
+       #        print('222:',len(dataQualityFlag))
+    except IndexError:
         print('ObsEdit/Edit_iIVS.nc for {} is missing, skipping'.format(name))
         logging.error(u'ObsEdit/Edit_iIVS.nc for {} is missing, skipping'.format(name))
         
@@ -131,9 +184,7 @@ def translate(vigos_archive):
         QCodeS = read_qcode(rr)
 
         dataQualityFlag = read_DataQualityFlag_fromDataQualityCode(Nobs,QCodeX,QCodeS)
-        
-    
- 
+
 # Observables
     rr = tar.extractfile(name + '/Observables/TimeUTC.nc')
     YMDHM, second = read_nc_O_time(rr)
@@ -172,8 +223,24 @@ def translate(vigos_archive):
     # CrossReference
     rr = tar.extractfile(name + '/CrossReference/ObsCrossRef.nc')
     obs2scan, obs2stat1_stat2 = read_nc_CR(rr)
+#    print('obs2scan: ', obs2scan)
+#    print(len(obs2scan))
+    
+#    print('obs2stat1_stat2:', obs2stat1_stat2)
+#    print(len(obs2stat1_stat2))
+    
     rr = tar.extractfile(name + '/CrossReference/SourceCrossRef.nc')
     scan2sour = read_nc_CR_sour(rr)
+#    print('scan2sour:', scan2sour)
+#    print(len(scan2sour))
+    
+    rr = tar.extractfile(name + '/CrossReference/StationCrossRef.nc')
+    scan2sta, sta2scan,numscanpersta = read_nc_CR_sta(rr)
+#    print('sta2scan:', sta2scan)
+#    print(len(sta2scan))
+#    print( 'scan2sta', scan2sta)
+#    print(len(scan2sta))
+#    print(len(numscanpersta))
 
     # station
     CableCal, TempC, AtmPres, RelHum = read_nc_St(name, stations, members, tar)
@@ -248,16 +315,22 @@ def read_nc_sour(file):
 
 def read_nc_delay(file):
     rootgrp = netcdf.NetCDFFile(file, "r")
-    group_delay = rootgrp.variables['GroupDelay'].data  # in radians
-    group_delay_sig = rootgrp.variables['GroupDelaySig'].data  # in radians
+    group_delay = rootgrp.variables['GroupDelay'].data  # in sec
+    group_delay_sig = rootgrp.variables['GroupDelaySig'].data  # in sec
     rootgrp.close()
     return group_delay, group_delay_sig
+    
+def read_nc_delayfull(file):
+    rootgrp = netcdf.NetCDFFile(file, "r")
+    group_delay_full = rootgrp.variables['GroupDelayFull'].data  # in sec
+    rootgrp.close()
+    return group_delay_full
 
 
 def read_nc_delay_rate(file):
     rootgrp = netcdf.NetCDFFile(file, "r")
-    group_delay = rootgrp.variables['GroupRate'].data  # in radians
-    group_delay_sig = rootgrp.variables['GroupRateSig'].data  # in radians
+    group_delay = rootgrp.variables['GroupRate'].data  # in 
+    group_delay_sig = rootgrp.variables['GroupRateSig'].data  # in 
     #DataFlag=rootgrp.variables['DataFlag'].data # in radians
     rootgrp.close()
     return group_delay, group_delay_sig
@@ -276,6 +349,17 @@ def read_nc_CR_sour(file):
     obs2sour = rootgrp.variables['Scan2Source'].data
     rootgrp.close()
     return obs2sour
+    
+   
+def read_nc_CR_sta(file):
+    rootgrp = netcdf.NetCDFFile(file, "r")
+#    numsta = rootgrp.variables['NumStation'].data
+#    numscan = rootgrp.variables['NumScan'].data
+    numscanpersta = rootgrp.variables['NumScansPerStation'].data
+    scan2sta = rootgrp.variables['Scan2Station'].data
+    sta2scan = rootgrp.variables['Station2Scan'].data
+    rootgrp.close()
+    return scan2sta, sta2scan,numscanpersta
 
 
 def read_nc_O_time(file):
@@ -373,6 +457,16 @@ def read_del_IONO(file):
     return tau_ion, d_tau_ion
     return rootgrp.variables.keys()
 
+def read_ambiguity(file):  
+    rootgrp = netcdf.NetCDFFile(file, "r")
+    print(rootgrp.variables.keys())
+#    ambig = rootgrp.variables['GPDLAMBG'].data
+    ambig = rootgrp.variables['AmbigSize'].data
+    rootgrp.close()
+    return ambig
+    return rootgrp.variables.keys()
+    
+
 def read_nc_St(name, stations, members, tar):
     CableCal = {}
     TempC = {}
@@ -397,6 +491,8 @@ def read_nc_St(name, stations, members, tar):
             AtmPres[k] = rootgrp.variables['AtmPres'].data
             RelHum[k] = rootgrp.variables['RelHum'].data
         except KeyError:
+            print('/No meteo data  for {}, skipping'.format(name))
+            logging.error(u'/No meteo data  for {}, skipping'.format(name))
             TempC[k] = [
                 10,
             ]
@@ -409,7 +505,8 @@ def read_nc_St(name, stations, members, tar):
     return CableCal, TempC, AtmPres, RelHum
     
 def read_DataQualityFlag_fromDataQualityCode(N,QCodeX,QCodeS):
-    GoodQualityCode = {'5', '6', '7', '8','9','H'} 
+#    GoodQualityCode = {'5', '6', '7', '8','9','H'} 
+    GoodQualityCode = {'5', '6', '7', '8','9'}
     DataQualityFlagX = [0]*N
     DataQualityFlagS = [0]*N
     DataQualityFlag = [0]*N
@@ -468,7 +565,6 @@ def calc_del_IONO(name,numChannelsX,ChannelFreqX,numChannelsS,ChannelFreqS,\
                 if numChannelsX[i] == 0:
                    Car_Freq_X[i] =  8562.99
                    data_quality_flag[i] =  2
-#                   print(i, numChannelsX[i],data_quality_flag[i]  )         
     if len(numChannelsS) == 1:
         try:
             S = sum(ChannelFreqS)
@@ -481,14 +577,13 @@ def calc_del_IONO(name,numChannelsX,ChannelFreqX,numChannelsS,ChannelFreqS,\
     else:
         for i in range(N):
             try:
-                print('i = ', i, numChannelsS[i], ChannelFreqS[i] )
                 S = sum(ChannelFreqS[i])
                 S = S/ numChannelsS[i]
                 Car_Freq_S[i] = S
             except FloatingPointError:
                 if numChannelsS[i]==0:
                     Car_Freq_S[i] = 2265.99
-                    data_quality_flag[i] = 2
+                    data_quality_flag[i] = 8
 
     for i in range(N):            
         try:
@@ -514,6 +609,7 @@ def create_NGS(name,file,version,stations,sources,delay,delay_sigma,delay_rate,d
            YMDHM, second,RefFreq,obs2scan, obs2stat1_stat2,scan2sour,\
            coord_stations,coord_sources,axis_type,axis_offset,\
            CableCal, TempC, AtmPres, RelHum,Correlation,Phase,PhaseSig,data_quality_flag):
+    
         # correct data
     #RelHum_i={}; CableCal_i={}
     if len(second) == 1:
@@ -660,9 +756,10 @@ def create_NGS(name,file,version,stations,sources,delay,delay_sigma,delay_rate,d
                     sources[n_sour], YMDHM[i][0], YMDHM[i][1], YMDHM[i][2],\
                     YMDHM[i][3], YMDHM[i][4], float(second[i]), i + 1))
         #card 2
+
         if data_quality_flag[i] > 10: data_quality_flag[i] = 8 
         out.write(
-            '{:20.8f}{:10.5f}{:20.8f}{:10.5f} {:1d}      I {:8d}02\n'.format(\
+            '{:20.8f}{:10.5f}{:20.10f}{:10.5f} {:1d}      I {:8d}02\n'.format(\
                 delay[i] * 10**9, delay_sigma[i] * 10**9,
                 delay_rate[i] * 10**12, delay_rate_sigma[i] * 10**12, data_quality_flag[i], i + 1))
         #card 3
@@ -688,7 +785,7 @@ def create_NGS(name,file,version,stations,sources,delay,delay_sigma,delay_rate,d
                   RelHum[stations[n_stat1-1]][n_data1]*100,RelHum[stations[n_stat2-1]][n_data2]*100,i+1))
         #card 8
 
-        out.write('{:20.10f}{:10.5f}{:20.10f}{:10.5f}  0       {:8d}08\n'.format\
+        out.write('{:20.10f}{:10.5f}{:20.5f}{:10.5f}  0       {:8d}08\n'.format\
                   (delay_ion[i],  sigma_delay_ion[i],\
                    delay_ion_r[i],  sigma_delay_ion_r[i],i + 1)) 
 #        #card 9
