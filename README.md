@@ -1,17 +1,18 @@
 # VGOSdb2NGS
 converter from VGOSdb to NGS card files
 
-Version 0.1
+Version 0.2
 
 Usage:
 
 ```
 python read.py --archives-dir <input VGOSdb root directory>
+python read.py --archive <input VGOSdb tar.gz file>
 ```
 
 Example for Windows:
 ```
-python.exe read.py "d:/forms/2018/vgosDB/18MAR02XU" "18MAR02XU.ngs"
+python.exe read.py --archive 18JAN25XE.tar.gz
 ```
 
 # Dependences
