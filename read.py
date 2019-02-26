@@ -22,7 +22,7 @@ def main():
     '''
     args = parse_args()
     if args.archive:
-        translate(args.vigos_archive)
+        translate(args.archive)
     elif args.archives_dir:
         for archive_name in os.listdir(args.archives_dir):
             if archive_name.endswith('.tar.gz') or archive_name.endswith(
