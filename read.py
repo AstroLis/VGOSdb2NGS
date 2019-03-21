@@ -1,3 +1,13 @@
+# Originally developed by Svetlana Mironova and Elena Skurikhina with the participation of Sergei Kurdubov
+# Modified by Zinovy Malkin:
+# - updated line 2
+# - corrected card #8
+# - corrected source positions lines:
+#   - fixed bug in output of negative declination
+#   - corrected format
+# - corrected "Auxiliary parameters" line
+# - put resulting files to the same directory
+
 import traceback
 import argparse
 import logging
@@ -43,7 +53,8 @@ def parse_args():
 def translate(vigos_archive):
     name = os.path.basename(vigos_archive).split('.')[0].upper()
     #path='in/18JAN25XE.tar.gz'#sys.argv[1]
-    out = os.path.join('out', name)  #'out/18JAN25XE'#sys.argv[2]
+#    out = os.path.join('out', name)  #'out/18JAN25XE'#sys.argv[2]
+    out = name    #'18JAN25XE'#sys.argv[2]
 
     tar = tarfile.open(vigos_archive, "r")
     members = tar.getmembers()
@@ -678,7 +689,7 @@ def create_NGS(name,file,version,stations,sources,delay,delay_sigma,delay_rate,d
     out.write('DATA IN NGS FORMAT FROM DATABASE {name}_V{version}\n'.format(
         name=name,version=version[0][2:5]))
     out.write(
-        'Observed delays and rates in card #2\n')
+        'Made from vgosDB with read.py. Observed delays and rates in card #2\n')
 #      'Observed delays and rates in card #2, modified errors in card #9\n')
     #Site cards
     dic_axis_type = {
@@ -723,15 +734,16 @@ def create_NGS(name,file,version,stations,sources,delay,delay_sigma,delay_rate,d
         mh = int(((coord_ra * 12 / np.pi) % 1) * 60 // 1)
         sh = ((coord_ra * 12 / np.pi) % 1) * 60 % 1 * 60
         sign = ' '
+        if (coord_dec < 0): sign = '-'
+        coord_dec = abs(coord_dec)
         d = int((coord_dec * 180 / np.pi) // 1)
         md = int(((coord_dec * 180 / np.pi) % 1) * 60 // 1)
         sd = ((coord_dec * 180 / np.pi) % 1) * 60 % 1 * 60
-        if (d < 0): sign = '-'
-        out.write('{:8s}  {:2d} {:2d} {:10f} {:1s}{:2d} {:2d} {:10f}\n'.format(
+        out.write('{:8s}  {:2d} {:2d} {:12f} {:1s}{:2d} {:2d} {:12f}\n'.format(
             source_name, h, mh, sh, sign, abs(d), md, sd))
     out.write('$END\n')
     # Auxiliary parameters
-    out.write('{:15.10e}            GR PH\n'.format(RefFreq[0]))
+    out.write('    {:15.10e}           GR PH\n'.format(RefFreq[0]))
     out.write('$END\n')
     # Data cards
     for i in range(len(delay)):
@@ -785,7 +797,7 @@ def create_NGS(name,file,version,stations,sources,delay,delay_sigma,delay_rate,d
                   RelHum[stations[n_stat1-1]][n_data1]*100,RelHum[stations[n_stat2-1]][n_data2]*100,i+1))
         #card 8
 
-        out.write('{:20.10f}{:10.5f}{:20.5f}{:10.5f}  0       {:8d}08\n'.format\
+        out.write('{:20.10f}{:10.5f}{:20.10f}{:10.5f}  0       {:8d}08\n'.format\
                   (delay_ion[i],  sigma_delay_ion[i],\
                    delay_ion_r[i],  sigma_delay_ion_r[i],i + 1)) 
 #        #card 9
